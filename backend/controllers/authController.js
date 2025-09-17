@@ -1,33 +1,38 @@
 const User = require('../models/User');
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
+};
+
 exports.signup = async (req, res) => {
+  const { name, email, password, role } = req.body;
+
   try {
-    const { name, email, password, role } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
+    let user = await User.findOne({ email });
+    if (user) return res.status(400).json({ error: 'User already exists' });
 
-    const newUser = new User({ name, email, password: hashedPassword, role });
-    await newUser.save();
+    user = new User({ name, email, password, role });
+    await user.save();
 
-    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
-    res.json({ token });
+    const token = generateToken(user._id);
+    res.status(201).json({ token, user: { id: user._id, name, email, role } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
 exports.login = async (req, res) => {
+  const { email, password } = req.body;
   try {
-    const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ error: 'Invalid credentials' });
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await user.matchPassword(password);
     if (!isMatch) return res.status(400).json({ error: 'Invalid credentials' });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-    res.json({ token });
+    const token = generateToken(user._id);
+    res.json({ token, user: { id: user._id, name: user.name, email, role: user.role } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
