@@ -1,18 +1,18 @@
 const Appointment = require('../models/Appointment');
 
 exports.createAppointment = async (req, res) => {
-  const { technicianId, service, appointmentDate } = req.body;
-
   try {
-    const appointment = new Appointment({
+    const { technician, serviceType, date } = req.body;
+
+    const newAppointment = new Appointment({
       user: req.user._id,
-      technician: technicianId,
-      service,
-      appointmentDate,
-      status: 'scheduled',
+      technician,
+      serviceType,
+      date
     });
-    await appointment.save();
-    res.status(201).json(appointment);
+
+    const saved = await newAppointment.save();
+    res.status(201).json(saved);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -20,9 +20,16 @@ exports.createAppointment = async (req, res) => {
 
 exports.getUserAppointments = async (req, res) => {
   try {
-    const appointments = await Appointment.find({ user: req.user._id })
-      .populate('technician', 'user service phone')
-      .sort({ appointmentDate: 1 });
+    const appointments = await Appointment.find({ user: req.user._id }).populate('technician');
+    res.json(appointments);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getTechnicianAppointments = async (req, res) => {
+  try {
+    const appointments = await Appointment.find({ technician: req.user._id }).populate('user');
     res.json(appointments);
   } catch (err) {
     res.status(500).json({ error: err.message });

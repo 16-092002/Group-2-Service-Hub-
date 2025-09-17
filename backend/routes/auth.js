@@ -1,11 +1,20 @@
-const { protect } = require('../middleware/authMiddleware');
+const express = require('express');
+const router = express.Router();
 
-// GET logged in user info
+const { signup, login } = require('../controllers/authController');
+const { protect } = require('../middleware/authMiddleware');
+const User = require('../models/User');
+
+// Auth Routes
+router.post('/signup', signup);
+router.post('/login', login);
+
+// Get current user (protected)
 router.get('/me', protect, async (req, res) => {
-  res.json(req.user);
+  res.json(req.user); // `req.user` is set by protect middleware
 });
 
-// PUT update user profile
+// Update profile (protected)
 router.put('/me', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
@@ -15,12 +24,19 @@ router.put('/me', protect, async (req, res) => {
 
     if (name) user.name = name;
     if (email) user.email = email;
-    if (password) user.password = password; // will hash because of pre-save hook
+    if (password) user.password = password; // Will hash due to pre-save middleware
 
     await user.save();
 
-    res.json({ id: user._id, name: user.name, email: user.email, role: user.role });
+    res.json({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+module.exports = router;

@@ -5,9 +5,9 @@ const cors = require('cors');
 
 const authRoutes = require('./routes/auth');
 const technicianRoutes = require('./routes/technicians');
-const serviceRequestRoutes = require('./routes/serviceRequests');
-const appointmentRoutes = require('./routes/appointments');
-
+const serviceRequestRoutes = require('./routes/serviceRequestRoutes');
+const appointmentRoutes = require('./routes/appointmentRoutes');
+const { allowRoles } = require('./middleware/roleMiddleware');
 const app = express();
 
 app.use(cors());
@@ -29,6 +29,7 @@ app.use('/auth', authRoutes);
 app.use('/technicians', technicianRoutes);
 app.use('/service-requests', serviceRequestRoutes);
 app.use('/appointments', appointmentRoutes);
+app.use('/admin', require('./routes/admin'));
 
 // Health check route
 app.get('/ping', (req, res) => {

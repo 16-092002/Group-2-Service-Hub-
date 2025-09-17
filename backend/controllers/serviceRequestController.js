@@ -1,26 +1,36 @@
 const ServiceRequest = require('../models/ServiceRequest');
 
-exports.createRequest = async (req, res) => {
-  const { serviceType, description, phone } = req.body;
-
+exports.createServiceRequest = async (req, res) => {
   try {
-    const request = new ServiceRequest({
+    const { serviceType, description, location, preferredDate } = req.body;
+
+    const newRequest = new ServiceRequest({
       user: req.user._id,
       serviceType,
       description,
-      phone,
-      status: 'pending',
+      location,
+      preferredDate
     });
-    await request.save();
-    res.status(201).json(request);
+
+    const saved = await newRequest.save();
+    res.status(201).json(saved);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-exports.getUserRequests = async (req, res) => {
+exports.getMyServiceRequests = async (req, res) => {
   try {
-    const requests = await ServiceRequest.find({ user: req.user._id }).populate('assignedTechnician', 'user service phone');
+    const requests = await ServiceRequest.find({ user: req.user._id });
+    res.json(requests);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getAllRequests = async (req, res) => {
+  try {
+    const requests = await ServiceRequest.find().populate('user').populate('assignedTechnician');
     res.json(requests);
   } catch (err) {
     res.status(500).json({ error: err.message });

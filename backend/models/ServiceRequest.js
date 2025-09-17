@@ -1,12 +1,17 @@
 const mongoose = require('mongoose');
 
-const ServiceRequestSchema = new mongoose.Schema({
+const serviceRequestSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  serviceType: { type: String, required: true },
-  description: { type: String, required: true },
-  phone: { type: String, required: true },
-  status: { type: String, enum: ['pending', 'accepted', 'completed'], default: 'pending' },
-  assignedTechnician: { type: mongoose.Schema.Types.ObjectId, ref: 'Technician' },
+  serviceType: { type: String, required: true }, // e.g., Plumbing, HVAC
+  description: String,
+  location: String,
+  preferredDate: Date,
+  status: {
+    type: String,
+    enum: ['pending', 'assigned', 'in_progress', 'completed'],
+    default: 'pending',
+  },
+  assignedTechnician: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
-module.exports = mongoose.model('ServiceRequest', ServiceRequestSchema);
+module.exports = mongoose.model('ServiceRequest', serviceRequestSchema);
