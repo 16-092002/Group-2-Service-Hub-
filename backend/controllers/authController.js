@@ -1,34 +1,63 @@
 const User = require('../models/User');
-const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+// Generate JWT
+const generateToken = (userId) => {
+  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+    expiresIn: '7d',
+  });
+};
+
+// POST /auth/signup
 exports.signup = async (req, res) => {
+  const { name, email, password, role } = req.body;
+
   try {
-    const { name, email, password, role } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const existingUser = await User.findOne({ email });
+    if (existingUser) return res.status(400).json({ error: 'User already exists' });
 
-    const newUser = new User({ name, email, password: hashedPassword, role });
-    await newUser.save();
+    const user = new User({ name, email, password, role });
+    await user.save();
 
-    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
-    res.json({ token });
+    const token = generateToken(user._id);
+
+    res.status(201).json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
 
+// POST /auth/login
 exports.login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ error: 'Invalid credentials' });
+  const { email, password } = req.body;
 
-    const isMatch = await bcrypt.compare(password, user.password);
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ error: 'User not found' });
+
+    const isMatch = await user.matchPassword(password);
     if (!isMatch) return res.status(400).json({ error: 'Invalid credentials' });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-    res.json({ token });
+    const token = generateToken(user._id);
+
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Server error' });
   }
 };
