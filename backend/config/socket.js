@@ -1,4 +1,3 @@
-// backend/config/socket.js
 const socketIo = require('socket.io');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
