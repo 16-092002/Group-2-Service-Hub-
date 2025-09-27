@@ -27,7 +27,7 @@ import {
   AccessTime,
   Verified,
   Build,
-  Electrical,
+  ElectricalServices,
   Plumbing,
   Thermostat,
   LocalGasStation,
@@ -53,7 +53,7 @@ const services = [
   {
     id: 'electrical',
     name: 'Electrical',
-    icon: <Electrical sx={{ fontSize: 40, color: '#FF9800' }} />,
+    icon: <ElectricalServices sx={{ fontSize: 40, color: '#FF9800' }} />,
     description: 'Safe and reliable electrical services',
     color: '#FFF3E0'
   },
