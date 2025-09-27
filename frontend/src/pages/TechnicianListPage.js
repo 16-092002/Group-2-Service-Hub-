@@ -50,7 +50,7 @@ import {
   Sort,
   Map as MapIcon,
   List as ListIcon,
-  Emergency
+  EmergencyShare
 } from '@mui/icons-material';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -107,7 +107,7 @@ const TechnicianCard = ({ technician, onContact, onVideoCall, onChat, onViewProf
         {technician.availability?.emergencyAvailable && (
           <Tooltip title="Emergency Services Available">
             <Chip
-              icon={<Emergency />}
+              icon={<EmergencyShare />}
               label="24/7"
               color="error"
               size="small"
@@ -752,7 +752,7 @@ function TechnicianListPage() {
                   </Typography>
                   {selectedTechnician.availability?.emergencyAvailable && (
                     <Chip
-                      icon={<Emergency />}
+                      icon={<EmergencyShare />}
                       label="24/7 Emergency Available"
                       color="error"
                       sx={{ mt: 1 }}
