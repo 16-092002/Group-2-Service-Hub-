@@ -3,68 +3,149 @@
   "version": "1.0.0",
   "description": "ServiceHub Backend - Professional Home Services Platform API",
   "main": "server.js",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:ci": "jest --ci --coverage --watchAll=false",
+    "test:ci": "jest --ci --coverage --watchAll=false --verbose",
     "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "lint": "eslint . --ext .js",
     "lint:fix": "eslint . --ext .js --fix",
+    "format": "prettier --write \"**/*.{js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{js,json,md}\"",
     "db:seed": "node scripts/seedDatabase.js",
-    "db:clear": "node scripts/clearDatabase.js"
+    "db:clear": "node scripts/clearDatabase.js",
+    "db:migrate": "node scripts/migrateDatabase.js",
+    "build": "echo 'No build step required for Node.js backend'",
+    "precommit": "npm run lint && npm run format:check",
+    "prepare": "husky install",
+    "security:audit": "npm audit",
+    "security:fix": "npm audit fix",
+    "docs:generate": "jsdoc -c jsdoc.conf.json",
+    "pm2:start": "pm2 start ecosystem.config.js",
+    "pm2:stop": "pm2 stop servicehub-api",
+    "pm2:restart": "pm2 restart servicehub-api",
+    "pm2:logs": "pm2 logs servicehub-api"
   },
   "keywords": [
     "servicehub",
+    "home-services",
     "api",
     "express",
     "mongodb",
-    "home-services"
+    "socket.io",
+    "appointments",
+    "technicians",
+    "real-time",
+    "chat",
+    "video-calls"
   ],
-  "author": "ServiceHub Team",
+  "author": {
+    "name": "ServiceHub Team",
+    "email": "team@servicehub.com",
+    "url": "https://servicehub.com"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/servicehub.git",
+    "directory": "backend"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/servicehub/issues"
+  },
+  "homepage": "https://servicehub.com",
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^7.5.0",
-    "socket.io": "^4.7.2",
-    "multer": "^1.4.5-lts.1",
-    "helmet": "^7.0.0",
-    "express-rate-limit": "^6.10.0",
+    "mongoose": "^8.0.3",
     "morgan": "^1.10.0",
-    "joi": "^17.9.2"
+    "multer": "^1.4.5-lts.1",
+    "socket.io": "^4.7.4",
+    "joi": "^17.11.0",
+    "compression": "^1.7.4",
+    "winston": "^3.11.0",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.7",
+    "stripe": "^14.9.0",
+    "twilio": "^4.19.3",
+    "sharp": "^0.33.1",
+    "moment": "^2.29.4",
+    "lodash": "^4.17.21",
+    "uuid": "^9.0.1",
+    "crypto": "^1.0.1",
+    "fs-extra": "^11.2.0",
+    "path": "^0.12.7"
   },
   "devDependencies": {
-    "jest": "^29.6.2",
+    "jest": "^29.7.0",
     "supertest": "^6.3.3",
-    "mongodb-memory-server": "^8.15.1",
-    "nodemon": "^3.0.1",
-    "eslint": "^8.47.0",
+    "mongodb-memory-server": "^9.1.3",
+    "nodemon": "^3.0.2",
+    "eslint": "^8.55.0",
     "eslint-config-node": "^4.1.0",
-    "eslint-plugin-node": "^11.1.0"
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-security": "^1.7.1",
+    "eslint-plugin-jest": "^27.6.0",
+    "prettier": "^3.1.1",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    "cross-env": "^7.0.3",
+    "concurrently": "^8.2.2",
+    "jsdoc": "^4.0.2",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0",
+    "@types/node": "^20.10.5",
+    "@types/jest": "^29.5.8",
+    "faker": "^6.6.6"
   },
   "jest": {
     "testEnvironment": "node",
-    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+    "setupFilesAfterEnv": [
+      "<rootDir>/tests/setup.js"
+    ],
     "testMatch": [
-      "<rootDir>/tests/**/*.test.js"
+      "<rootDir>/tests/**/*.test.js",
+      "<rootDir>/**/__tests__/**/*.js"
     ],
     "collectCoverageFrom": [
       "controllers/**/*.js",
       "models/**/*.js",
       "middleware/**/*.js",
       "routes/**/*.js",
+      "utils/**/*.js",
       "!node_modules/**",
       "!tests/**",
-      "!coverage/**"
+      "!coverage/**",
+      "!scripts/**"
     ],
     "coverageDirectory": "coverage",
-    "coverageReporters": ["text", "lcov", "html"],
+    "coverageReporters": [
+      "text",
+      "lcov",
+      "html",
+      "json"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 70,
+        "functions": 70,
+        "lines": 70,
+        "statements": 70
+      }
+    },
     "verbose": true,
     "forceExit": true,
     "clearMocks": true,
@@ -74,17 +155,84 @@
     "globalTeardown": "<rootDir>/tests/teardown.js"
   },
   "eslintConfig": {
-    "extends": ["eslint:recommended", "node"],
+    "extends": [
+      "eslint:recommended",
+      "node"
+    ],
+    "plugins": [
+      "security",
+      "jest"
+    ],
     "env": {
       "node": true,
       "es2021": true,
       "jest": true
     },
+    "parserOptions": {
+      "ecmaVersion": 2021,
+      "sourceType": "module"
+    },
     "rules": {
       "no-console": "warn",
-      "no-unused-vars": "warn",
+      "no-unused-vars": [
+        "warn",
+        {
+          "argsIgnorePattern": "^_"
+        }
+      ],
       "prefer-const": "error",
-      "no-var": "error"
+      "no-var": "error",
+      "security/detect-object-injection": "warn",
+      "security/detect-non-literal-regexp": "warn",
+      "security/detect-unsafe-regex": "error"
+    },
+    "ignorePatterns": [
+      "node_modules/",
+      "coverage/",
+      "uploads/"
+    ]
+  },
+  "prettier": {
+    "semi": true,
+    "trailingComma": "es5",
+    "singleQuote": true,
+    "printWidth": 100,
+    "tabWidth": 2,
+    "useTabs": false,
+    "bracketSpacing": true,
+    "arrowParens": "avoid",
+    "endOfLine": "lf"
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "pre-push": "npm run test:ci"
     }
+  },
+  "nodemonConfig": {
+    "watch": [
+      "."
+    ],
+    "ext": "js,json",
+    "ignore": [
+      "node_modules/",
+      "tests/",
+      "coverage/",
+      "uploads/",
+      "*.test.js"
+    ],
+    "env": {
+      "NODE_ENV": "development"
+    },
+    "delay": 1000
   }
 }
