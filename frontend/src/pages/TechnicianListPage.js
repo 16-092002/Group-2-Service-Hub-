@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Container,
-  Typography,
   Grid,
   Card,
   CardContent,
@@ -24,15 +23,14 @@ import {
   InputAdornment,
   Pagination,
   CircularProgress,
-  Skeleton,
   Paper,
   Divider,
-  Badge,
   Tooltip,
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Typography
 } from '@mui/material';
 import {
   Search,
@@ -47,33 +45,23 @@ import {
   AccessTime,
   Work,
   Close,
-  Sort,
-  Map as MapIcon,
-  List as ListIcon,
+  CalendarToday,
   EmergencyShare
 } from '@mui/icons-material';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import AppointmentBooking from '../components/AppointmentBooking';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 
-// Mock Google Maps component (replace with actual Google Maps integration)
-const MapView = ({ technicians, onTechnicianSelect }) => (
-  <Box
-    sx={{
-      height: '400px',
-      backgroundColor: '#f5f5f5',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      borderRadius: 2
-    }}
-  >
-    <Typography variant="h6" color="text.secondary">
-      Map View (Google Maps Integration)
-    </Typography>
-  </Box>
-);
-
-const TechnicianCard = ({ technician, onContact, onVideoCall, onChat, onViewProfile }) => {
+const TechnicianCard = ({ 
+  technician, 
+  onContact, 
+  onVideoCall, 
+  onChat, 
+  onViewProfile, 
+  onBookAppointment 
+}) => {
   const [imageError, setImageError] = useState(false);
 
   return (
@@ -214,7 +202,7 @@ const TechnicianCard = ({ technician, onContact, onVideoCall, onChat, onViewProf
         <Box>
           <Tooltip title="WhatsApp">
             <IconButton
-              color="primary"
+              color="success"
               onClick={() => onContact(technician)}
               sx={{ bgcolor: 'action.hover', mr: 1 }}
             >
@@ -240,14 +228,25 @@ const TechnicianCard = ({ technician, onContact, onVideoCall, onChat, onViewProf
             </IconButton>
           </Tooltip>
         </Box>
-        <Button
-          variant="contained"
-          size="small"
-          onClick={() => onViewProfile(technician)}
-          sx={{ textTransform: 'none' }}
-        >
-          View Profile
-        </Button>
+        <Box>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => onViewProfile(technician)}
+            sx={{ mr: 1, textTransform: 'none' }}
+          >
+            View Profile
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<CalendarToday />}
+            onClick={() => onBookAppointment(technician)}
+            sx={{ textTransform: 'none' }}
+          >
+            Book
+          </Button>
+        </Box>
       </CardActions>
     </Card>
   );
@@ -256,6 +255,7 @@ const TechnicianCard = ({ technician, onContact, onVideoCall, onChat, onViewProf
 function TechnicianListPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   
   // State management
   const [technicians, setTechnicians] = useState([]);
@@ -272,11 +272,11 @@ function TechnicianListPage() {
   const [sortOrder, setSortOrder] = useState('desc');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'map'
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTechnician, setSelectedTechnician] = useState(null);
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
 
   // Get query parameters from URL
   useEffect(() => {
@@ -308,13 +308,18 @@ function TechnicianListPage() {
       params.append('sortBy', sortBy);
       params.append('order', sortOrder);
       
-      const response = await axios.get(`/api/technicians?${params.toString()}`);
-      setTechnicians(response.data.technicians);
-      setTotalPages(response.data.pagination.totalPages);
+      if (searchTerm) {
+        params.append('search', searchTerm);
+      }
+      
+      const response = await axios.get(`/technicians?${params.toString()}`);
+      setTechnicians(response.data.technicians || []);
+      setTotalPages(response.data.pagination?.totalPages || 1);
     } catch (error) {
       console.error('Error fetching technicians:', error);
       // Use mock data for demonstration
       setTechnicians(mockTechnicians);
+      toast.error('Failed to load technicians. Showing sample data.');
     } finally {
       setLoading(false);
     }
@@ -327,23 +332,52 @@ function TechnicianListPage() {
 
   const handleContact = (technician) => {
     const message = `Hi ${technician.name}, I'd like to request your ${technician.service.join('/')} services.`;
-    const phone = technician.whatsappNumber || '+13828850973';
+    const phone = technician.whatsappNumber || technician.phone || '+13828850973';
     window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const handleVideoCall = (technician) => {
-    // Navigate to video call component
-    navigate(`/video-call/${technician._id}`);
+    if (!isAuthenticated) {
+      toast.error('Please login to start a video call');
+      navigate('/login');
+      return;
+    }
+    navigate(`/video-call/${technician._id || technician.user?._id}`);
   };
 
-  const handleChat = (technician) => {
-    // Navigate to chat component
-    navigate(`/chat/${technician._id}`);
+  const handleChat = async (technician) => {
+    if (!isAuthenticated) {
+      toast.error('Please login to start a chat');
+      navigate('/login');
+      return;
+    }
+
+    try {
+      const response = await axios.post('/chat/create', {
+        otherUserId: technician._id || technician.user?._id
+      });
+      
+      navigate(`/chat/${response.data.chat._id}`);
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      toast.error('Failed to start chat');
+    }
   };
 
   const handleViewProfile = (technician) => {
     setSelectedTechnician(technician);
     setProfileDialogOpen(true);
+  };
+
+  const handleBookAppointment = (technician) => {
+    if (!isAuthenticated) {
+      toast.error('Please login to book an appointment');
+      navigate('/login');
+      return;
+    }
+    
+    setSelectedTechnician(technician);
+    setBookingDialogOpen(true);
   };
 
   const clearFilters = () => {
@@ -373,7 +407,8 @@ function TechnicianListPage() {
       distance: 2.5,
       isVerified: true,
       availability: { emergencyAvailable: true },
-      experience: { years: 8 }
+      experience: { years: 8 },
+      phone: '+1234567890'
     },
     {
       _id: '2',
@@ -388,33 +423,15 @@ function TechnicianListPage() {
       distance: 1.2,
       isVerified: true,
       availability: { emergencyAvailable: false },
-      experience: { years: 6 }
+      experience: { years: 6 },
+      phone: '+1987654321'
     }
   ];
 
   if (loading && technicians.length === 0) {
     return (
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
-        <Grid container spacing={3}>
-          {[...Array(6)].map((_, index) => (
-            <Grid item xs={12} sm={6} md={4} key={index}>
-              <Card sx={{ borderRadius: 3 }}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                    <Skeleton variant="circular" width={60} height={60} sx={{ mr: 2 }} />
-                    <Box sx={{ flexGrow: 1 }}>
-                      <Skeleton variant="text" width="60%" height={28} />
-                      <Skeleton variant="text" width="40%" height={20} />
-                    </Box>
-                  </Box>
-                  <Skeleton variant="text" width="80%" height={20} sx={{ mb: 1 }} />
-                  <Skeleton variant="text" width="60%" height={20} sx={{ mb: 1 }} />
-                  <Skeleton variant="text" width="70%" height={20} />
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+      <Container maxWidth="lg" sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+        <CircularProgress size={60} />
       </Container>
     );
   }
@@ -441,6 +458,11 @@ function TechnicianListPage() {
               variant="outlined"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  fetchTechnicians();
+                }
+              }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -473,20 +495,6 @@ function TechnicianListPage() {
                   <MenuItem value="pricing.hourlyRate">Price</MenuItem>
                 </Select>
               </FormControl>
-              <Box sx={{ display: 'flex', borderRadius: 1, bgcolor: 'action.hover' }}>
-                <IconButton
-                  onClick={() => setViewMode('list')}
-                  color={viewMode === 'list' ? 'primary' : 'default'}
-                >
-                  <ListIcon />
-                </IconButton>
-                <IconButton
-                  onClick={() => setViewMode('map')}
-                  color={viewMode === 'map' ? 'primary' : 'default'}
-                >
-                  <MapIcon />
-                </IconButton>
-              </Box>
             </Box>
           </Grid>
         </Grid>
@@ -519,46 +527,40 @@ function TechnicianListPage() {
         </Box>
       )}
 
-      {/* Content */}
-      {viewMode === 'map' ? (
-        <MapView technicians={technicians} onTechnicianSelect={handleViewProfile} />
-      ) : (
-        <>
-          {/* Results Count */}
-          <Box sx={{ mb: 3 }}>
-            <Typography variant="body1" color="text.secondary">
-              {technicians.length} technicians found
-            </Typography>
-          </Box>
+      {/* Results Count */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="body1" color="text.secondary">
+          {technicians.length} technicians found
+        </Typography>
+      </Box>
 
-          {/* Technician Grid */}
-          <Grid container spacing={3}>
-            {technicians.map((technician) => (
-              <Grid item xs={12} sm={6} md={4} key={technician._id}>
-                <TechnicianCard
-                  technician={technician}
-                  onContact={handleContact}
-                  onVideoCall={handleVideoCall}
-                  onChat={handleChat}
-                  onViewProfile={handleViewProfile}
-                />
-              </Grid>
-            ))}
+      {/* Technician Grid */}
+      <Grid container spacing={3}>
+        {technicians.map((technician) => (
+          <Grid item xs={12} sm={6} md={4} key={technician._id}>
+            <TechnicianCard
+              technician={technician}
+              onContact={handleContact}
+              onVideoCall={handleVideoCall}
+              onChat={handleChat}
+              onViewProfile={handleViewProfile}
+              onBookAppointment={handleBookAppointment}
+            />
           </Grid>
+        ))}
+      </Grid>
 
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-              <Pagination
-                count={totalPages}
-                page={page}
-                onChange={(event, value) => setPage(value)}
-                color="primary"
-                size="large"
-              />
-            </Box>
-          )}
-        </>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(event, value) => setPage(value)}
+            color="primary"
+            size="large"
+          />
+        </Box>
       )}
 
       {/* Filter Drawer */}
@@ -665,7 +667,10 @@ function TechnicianListPage() {
           <Button
             fullWidth
             variant="contained"
-            onClick={() => setFilterDrawerOpen(false)}
+            onClick={() => {
+              setFilterDrawerOpen(false);
+              fetchTechnicians();
+            }}
           >
             Apply Filters
           </Button>
@@ -766,7 +771,10 @@ function TechnicianListPage() {
               <Button
                 variant="outlined"
                 startIcon={<WhatsApp />}
-                onClick={() => handleContact(selectedTechnician)}
+                onClick={() => {
+                  handleContact(selectedTechnician);
+                  setProfileDialogOpen(false);
+                }}
                 color="success"
               >
                 WhatsApp
@@ -774,23 +782,37 @@ function TechnicianListPage() {
               <Button
                 variant="outlined"
                 startIcon={<VideoCall />}
-                onClick={() => handleVideoCall(selectedTechnician)}
+                onClick={() => {
+                  handleVideoCall(selectedTechnician);
+                  setProfileDialogOpen(false);
+                }}
               >
                 Video Call
               </Button>
               <Button
                 variant="contained"
+                startIcon={<CalendarToday />}
                 onClick={() => {
-                  navigate(`/request-service?technician=${selectedTechnician._id}`);
                   setProfileDialogOpen(false);
+                  handleBookAppointment(selectedTechnician);
                 }}
               >
-                Book Service
+                Book Appointment
               </Button>
             </DialogActions>
           </>
         )}
       </Dialog>
+
+      {/* Appointment Booking Dialog */}
+      <AppointmentBooking
+        open={bookingDialogOpen}
+        onClose={() => {
+          setBookingDialogOpen(false);
+          setSelectedTechnician(null);
+        }}
+        technician={selectedTechnician}
+      />
     </Container>
   );
 }
