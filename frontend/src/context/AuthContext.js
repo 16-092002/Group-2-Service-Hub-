@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authAPI, apiHelpers } from '../services/api';
+import axios from 'axios';
 
 const AuthContext = createContext();
 
@@ -10,6 +10,21 @@ export const useAuth = () => {
   }
   return context;
 };
+
+// Configure axios interceptors
+axios.defaults.baseURL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000';
+
+// Request interceptor to add auth token
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -28,10 +43,11 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      const response = await authAPI.getCurrentUser();
+      const response = await axios.get('/auth/me');
       setUser(response.data);
       setIsAuthenticated(true);
     } catch (error) {
+      console.error('Auth check failed:', error);
       localStorage.removeItem('token');
       setUser(null);
       setIsAuthenticated(false);
@@ -42,7 +58,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      const response = await authAPI.login(credentials);
+      const response = await axios.post('/auth/login', credentials);
       const { token, user: userData } = response.data;
       
       localStorage.setItem('token', token);
@@ -51,13 +67,14 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true, user: userData };
     } catch (error) {
-      return apiHelpers.handleError(error);
+      const message = error.response?.data?.error || 'Login failed';
+      return { success: false, error: message };
     }
   };
 
   const signup = async (userData) => {
     try {
-      const response = await authAPI.signup(userData);
+      const response = await axios.post('/auth/signup', userData);
       const { token, user: newUser } = response.data;
       
       localStorage.setItem('token', token);
@@ -66,7 +83,8 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true, user: newUser };
     } catch (error) {
-      return apiHelpers.handleError(error);
+      const message = error.response?.data?.error || 'Signup failed';
+      return { success: false, error: message };
     }
   };
 
@@ -74,16 +92,19 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
     setUser(null);
     setIsAuthenticated(false);
+    
+    // Force reload to clear any cached data
     window.location.href = '/';
   };
 
   const updateUser = async (userData) => {
     try {
-      const response = await authAPI.updateProfile(userData);
+      const response = await axios.put('/auth/me', userData);
       setUser(response.data);
       return { success: true, user: response.data };
     } catch (error) {
-      return apiHelpers.handleError(error);
+      const message = error.response?.data?.error || 'Update failed';
+      return { success: false, error: message };
     }
   };
 
