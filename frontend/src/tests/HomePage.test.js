@@ -1,41 +1,24 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
-import { ThemeProvider } from '@mui/material/styles';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import HomePage from '../pages/HomePage';
-import theme from '../theme';
+import { renderWithProviders, mockNavigate } from '../utils/testUtils';
 
 // Mock react-router-dom
-const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: () => mockNavigate,
+  useLocation: () => ({ search: '' })
 }));
 
-// Mock geolocation
-const mockGeolocation = {
-  getCurrentPosition: jest.fn(),
-  watchPosition: jest.fn()
-};
-
-global.navigator.geolocation = mockGeolocation;
-
-const renderWithProviders = (component) => {
-  return render(
-    <BrowserRouter>
-      <ThemeProvider theme={theme}>
-        {component}
-      </ThemeProvider>
-    </BrowserRouter>
-  );
-};
+// Mock the hero image import
+jest.mock('../assets/hero.png', () => 'mock-hero-image.png');
 
 describe('HomePage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  test('renders homepage with main elements', () => {
+  test('renders homepage with main elements', async () => {
     renderWithProviders(<HomePage />);
     
     expect(screen.getByText('ServiceHub')).toBeInTheDocument();
@@ -72,8 +55,14 @@ describe('HomePage', () => {
   test('service cards are clickable', async () => {
     renderWithProviders(<HomePage />);
     
-    const plumbingCard = screen.getByText('Plumbing').closest('.MuiCard-root');
-    fireEvent.click(plumbingCard);
+    // Find the plumbing service card and click it
+    const plumbingCards = screen.getAllByText('Plumbing');
+    const plumbingServiceCard = plumbingCards.find(card => 
+      card.closest('.MuiCard-root')
+    );
+    
+    expect(plumbingServiceCard).toBeInTheDocument();
+    fireEvent.click(plumbingServiceCard.closest('.MuiCard-root'));
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/request-service?service=plumbing');
@@ -81,9 +70,6 @@ describe('HomePage', () => {
   });
 
   test('emergency contact opens WhatsApp', () => {
-    // Mock window.open
-    global.open = jest.fn();
-    
     renderWithProviders(<HomePage />);
     
     const emergencyButton = screen.getByText('Emergency? Call Now');
@@ -95,11 +81,8 @@ describe('HomePage', () => {
     );
   });
 
-  test('handles geolocation permission', () => {
-    const mockSuccess = jest.fn();
-    const mockError = jest.fn();
-    
-    mockGeolocation.getCurrentPosition.mockImplementationOnce((success, error) => {
+  test('handles geolocation permission granted', () => {
+    const mockGetCurrentPosition = jest.fn((success) => {
       success({
         coords: {
           latitude: 43.6532,
@@ -107,9 +90,95 @@ describe('HomePage', () => {
         }
       });
     });
+    
+    global.navigator.geolocation.getCurrentPosition = mockGetCurrentPosition;
 
     renderWithProviders(<HomePage />);
 
-    expect(mockGeolocation.getCurrentPosition).toHaveBeenCalled();
+    expect(mockGetCurrentPosition).toHaveBeenCalled();
+  });
+
+  test('handles geolocation permission denied', () => {
+    const mockGetCurrentPosition = jest.fn((success, error) => {
+      error(new Error('Permission denied'));
+    });
+    
+    global.navigator.geolocation.getCurrentPosition = mockGetCurrentPosition;
+
+    renderWithProviders(<HomePage />);
+
+    expect(mockGetCurrentPosition).toHaveBeenCalled();
+  });
+
+  test('renders featured technicians section', () => {
+    renderWithProviders(<HomePage />);
+    
+    expect(screen.getByText('Top-Rated Technicians')).toBeInTheDocument();
+    expect(screen.getByText('Meet our verified professionals with excellent track records')).toBeInTheDocument();
+  });
+
+  test('renders quick action buttons', () => {
+    renderWithProviders(<HomePage />);
+    
+    expect(screen.getByText('Request a Service')).toBeInTheDocument();
+    expect(screen.getByText('Find a Technician')).toBeInTheDocument();
+  });
+
+  test('quick action buttons navigate correctly', async () => {
+    renderWithProviders(<HomePage />);
+    
+    // Test Request Service button
+    const requestServiceButton = screen.getByText('Request a Service');
+    fireEvent.click(requestServiceButton);
+    
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/request-service');
+    });
+
+    // Test Find Technician button
+    const findTechnicianButton = screen.getByText('Find a Technician');
+    fireEvent.click(findTechnicianButton);
+    
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/technicians');
+    });
+  });
+
+  test('displays service information correctly', () => {
+    renderWithProviders(<HomePage />);
+    
+    // Check for service descriptions
+    expect(screen.getByText('Expert plumbing repairs and installations')).toBeInTheDocument();
+    expect(screen.getByText('Safe and reliable electrical services')).toBeInTheDocument();
+    expect(screen.getByText('Heating, ventilation, and AC services')).toBeInTheDocument();
+    expect(screen.getByText('Professional gas line services')).toBeInTheDocument();
+  });
+
+  test('search with URL parameters', () => {
+    // Mock location with search params
+    jest.doMock('react-router-dom', () => ({
+      ...jest.requireActual('react-router-dom'),
+      useNavigate: () => mockNavigate,
+      useLocation: () => ({ search: '?service=electrical' })
+    }));
+
+    renderWithProviders(<HomePage />);
+    
+    // Component should handle URL parameters
+    expect(screen.getByText('Electrical')).toBeInTheDocument();
+  });
+
+  test('renders without errors when geolocation is not available', () => {
+    // Mock navigator without geolocation
+    const originalNavigator = global.navigator;
+    global.navigator = { ...originalNavigator };
+    delete global.navigator.geolocation;
+
+    expect(() => {
+      renderWithProviders(<HomePage />);
+    }).not.toThrow();
+
+    // Restore navigator
+    global.navigator = originalNavigator;
   });
 });
