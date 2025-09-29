@@ -5,7 +5,7 @@ import { CssBaseline, Box } from '@mui/material';
 import { Toaster } from 'react-hot-toast';
 
 // Context
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Components
 import Navbar from './components/Navbar';
