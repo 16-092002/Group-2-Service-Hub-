@@ -1,7 +1,6 @@
 .env
 node_modules
-/seeds
-seeds
+
 # dependencies
 /node_modules
 /.pnp
