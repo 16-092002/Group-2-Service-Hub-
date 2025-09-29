@@ -10,7 +10,7 @@ const users = [
   {
     name: 'John Admin',
     email: 'admin@servicehub.com',
-    password: 'admin123',
+    password: '$2a$10$xbALwrw0lPQ6r3sklB/kqeeWVesg3EDM01LVZv/mveEcqfE5GJKYq',
     role: 'admin'
   },
   {
